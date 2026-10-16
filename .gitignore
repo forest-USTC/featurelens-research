@@ -1,0 +1,12 @@
+data/
+node_modules/
+artifacts/
+
+# Local settings and secrets
+*.local.json
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+coverage/
