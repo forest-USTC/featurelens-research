@@ -1,119 +1,130 @@
 # FeatureLens Research · 知微
 
-Evidence-driven product feature research for product managers.
+Evidence-driven product research for product managers — Python CLI and MCP.
 
-把一个产品问题推进成有来源、能追问、可验证的研究记录。**只有命令行与 stdio MCP，没有前端、网页服务或内置模型 API。**
+把产品问题整理成有来源、可引用、能验证的研究记录。**Python 核心、命令行与 stdio MCP，无前端、无内置模型调用。** JavaScript 仅用于独立的静态语法解析模块。
 
-提供 15 个研究工具，覆盖研究项目、静态线索、证据筛选、判断分层、验证记录和报告。内置扫描器通过 Acorn 解析 JavaScript 语法，提取函数、调用表达式、导入、条件和返回语句；不执行目标代码。
+## 已实现与后续方向
 
-## 开始使用
+- 研究项目、材料事实 / 推断 / 未知、证据引用校验、人工验证历史、Markdown / JSON 报告。
+- 导入 TXT、Markdown、DOCX、文字型 PDF，保留原件 SHA-256、提取片段、来源位置与提取限制。
+- 通过字面关键词查找片段，将选定片段登记为判断的证据。
+- 对已解包 JavaScript 目录进行静态扫描，提取函数、导入、调用表达式、条件和返回语句，并核对源码哈希。
+- 18 个 MCP 工具和 `feature-investigation` 提示模板。
 
-先克隆仓库并安装依赖（Node.js 22+）：
+**RAG、向量检索、知识图谱和模型评测尚未实现。** 当前版本先建立文档与证据基础，后续再加入检索与生成评测；是否引入图数据库由关系查询需求决定。
+
+## 安装与启动
+
+需要 Python 3.11+，推荐 3.12；下面使用 uv 管理独立环境。只有 JavaScript 静态分析需要额外准备 Node.js 22+ / npm。
 
 ```bash
 git clone https://github.com/forest-USTC/featurelens-research.git
 cd featurelens-research
-npm ci
+uv sync --locked
+uv run featurelens help
+uv run featurelens doctor
 ```
 
-然后在此目录执行：
+文档导入、证据管理、CLI 和 MCP 无需 Node。需要静态分析时安装解析模块依赖：
 
 ```bash
-./zhiwei help
-./zhiwei doctor
-./zhiwei demo --json
+npm ci --prefix src/featurelens/js --ignore-scripts
+uv run featurelens demo --json
 ```
 
-`demo` 创建一个演示研究并真正调用分析引擎处理 `fixtures/demo-app`。这个应用是虚构测试样例，不代表任何真实产品；静态分析不会运行它。演示输出 `study_id` 与 `analysis.id`，后续命令使用实际返回值。
+`demo` 仅分析内置虚构样例，不执行应用，也不证明真实产品行为。本地 `./featurelens` 和 `./zhiwei` 是 Python 环境的启动别名。
+
+## 文档研究示例
 
 ```bash
-./zhiwei create --title '知识库引用研究' --question '找不到引用时，功能怎样处理？' --target '/绝对路径/已解包应用' --json
-./zhiwei analyze --study-id r_实际ID --json
-./zhiwei find-nodes --study-id r_实际ID --analysis-id a_实际ID --query knowledge --json
-./zhiwei capture-node --study-id r_实际ID --analysis-id a_实际ID --node-id 实际节点ID --title '问答入口'
-./zhiwei read-source --study-id r_实际ID --analysis-id a_实际ID --node-id 实际节点ID
-./zhiwei report --study-id r_实际ID --output '/绝对路径/新报告.md'
+uv run featurelens create --title '知识库问答研究' --question '资料不足时，产品怎样响应？' --json
+uv run featurelens import-document --study-id r_实际ID --path '/绝对路径/产品说明.pdf' --json
+uv run featurelens document-chunks --study-id r_实际ID --document-id d_实际ID --query '资料不足' --json
+uv run featurelens capture-document-chunk --study-id r_实际ID --document-id d_实际ID --chunk-id chunk_000001 --title '资料不足规则' --json
+uv run featurelens add-claim --study-id r_实际ID --type fact --text '文档中描述了资料不足时的提示规则' --evidence-ids '["e_实际ID"]'
+uv run featurelens report --study-id r_实际ID --output '/绝对路径/新研究报告.md'
 ```
 
-只需标准 Node.js 22+ 和 `npm ci` 安装的依赖。`./zhiwei` 使用 PATH 上的 Node；静态扫描器随项目提供，无需额外安装分析 CLI。
+命令中的 ID 均需替换为实际返回值，`chunk_id` 应来自搜索结果。`fact` 表示对材料内容的判断，不代表已经验证产品实际行为。
+
+| 文件 | 保留的位置 | 边界 |
+| --- | --- | --- |
+| TXT / MD | 原始行号、行内字符范围 | UTF-8 文本，不执行 Markdown 中的指令 |
+| DOCX | 正文段落号、顶层表格与行号 | 不保证覆盖页眉页脚、批注、修订或嵌入对象；不是页面坐标 |
+| PDF | 从 1 开始的页码、页内提取文本字符范围 | 无 OCR；多栏顺序和表格需人工核对 |
+
+每次导入上限 20 MiB，DOCX 声明解压总量上限 64 MiB，PDF 上限 500 页，提取上限 200 万字符 / 5,000 个片段。每个片段最多 1,500 字符，按行、段落、表格行或页切分，不跨来源单元拼接。提取在独立进程中进行，90 秒超时；提取不到文字时明确失败，不生成空证据。来源文件和片段副本都保留 SHA-256，后续读取会检查是否被修改。
+
+## 静态分析
+
+```bash
+uv run featurelens create --title '分支研究' --question '没有引用时返回什么？' --target '/绝对路径/已解包JS目录' --json
+uv run featurelens analyze --study-id r_实际ID --source-paths '["retrieval.js"]' --json
+uv run featurelens find-nodes --study-id r_实际ID --analysis-id a_实际ID --query answerQuestion --json
+uv run featurelens capture-node --study-id r_实际ID --analysis-id a_实际ID --node-id 实际节点ID --title '函数线索'
+uv run featurelens read-source --study-id r_实际ID --analysis-id a_实际ID --node-id 实际节点ID
+```
+
+只支持标准 `.js` / `.mjs` / `.cjs`，不直接支持 ASAR、`.app`、TypeScript、JSX 或原生二进制。Acorn 负责语法解析，扫描模块不解析跨文件调用或数据流，不恢复原始源码，也不执行待分析应用。
+
+分析上限：180 秒、512 MiB Node 堆、64 MiB 输出、20,000 个目录条目、1,000 个文件、20,000 个语法节点；单文件 2 MiB、源码总量 32 MiB。解析失败和跳过的文件会列出原因。导入的分析 JSON 不能授权工具读取其引用的本地源码。
 
 ## MCP 接入
 
 ```bash
-./zhiwei mcp-config
+uv run featurelens mcp-config
 ```
 
-输出绝对路径配置，可用于支持 `mcpServers` 的客户端。Codex 的 TOML 形态如下，实际 Node 路径以 `mcp-config` 返回值为准：
+生成配置使用当前 Python 环境的绝对路径。将其复制到客户端的 MCP 配置中；示意如下：
 
-```toml
-[mcp_servers.zhiwei]
-command = "/绝对路径/node"
-args = ["/绝对路径/feature-research/bin/zhiwei.mjs", "mcp"]
-
-[mcp_servers.zhiwei.env]
-ZHIWEI_DATA_DIR = "/绝对路径/研究库"
+```json
+{
+  "mcpServers": {
+    "featurelens": {
+      "command": "/absolute/path/featurelens-research/.venv/bin/python",
+      "args": ["-m", "featurelens", "mcp"],
+      "env": {"ZHIWEI_DATA_DIR": "/absolute/path/research-data"}
+    }
+  }
+}
 ```
 
-配置由用户选择的客户端加载。生成配置不等于已注册；独立 MCP 客户端握手测试也不等于当前聊天已经连接。
-
-接入后可以这样提出需求：
-
-> 用知微研究我指定的这个应用：知识库没有匹配资料时会发生什么？先建立研究，找到相关证据，区分源码事实和运行推断，把未验证的问题列出来，最后导出报告。
-
-服务提供 `feature-investigation` 提示模板。模型由 Codex 等客户端提供；本工具不保存模型密钥，也不发起付费模型调用。
-
-## 工具与工作流程
+支持 stdio MCP 的客户端负责加载配置和提供模型。本项目不保存模型密钥，不自动发起模型请求。生成配置和独立握手测试不等于已接入当前聊天。
 
 | 工作 | 工具 |
 | --- | --- |
-| 确定问题与目标 | `research_create`、`research_list`、`research_get` |
-| 分析或导入已有结果 | `research_analyze`、`research_import_analysis` |
-| 找到可引用证据 | `research_find_nodes`、`research_capture_node`、`research_read_source` |
-| 补充文档、访谈、实测材料 | `research_add_evidence`、`research_evidence` |
-| 区分事实、推断与未知 | `research_add_claim` |
-| 管理验证计划与结果 | `research_add_verification`、`research_record_verification` |
-| 导出与环境诊断 | `research_report`、`research_doctor` |
+| 研究项目 | `research_create` / `research_list` / `research_get` |
+| 文档与片段 | `research_import_document` / `research_document_chunks` / `research_capture_document_chunk` |
+| 静态分析 | `research_analyze` / `research_import_analysis` / `research_find_nodes` / `research_capture_node` / `research_read_source` |
+| 材料与判断 | `research_add_evidence` / `research_evidence` / `research_add_claim` |
+| 人工验证 | `research_add_verification` / `research_record_verification` |
+| 输出与诊断 | `research_report` / `research_doctor` |
 
-每个命令都支持 `--json`。复杂参数可以存入 JSON 文件，再传 `--input /绝对路径/参数.json`；CLI 与 MCP 使用同一套参数校验和业务逻辑。
+CLI 与 MCP 使用同一份 JSON Schema 和 Python 业务逻辑。复杂参数可以通过 `--input /绝对路径/参数.json` 提供。
 
-## 证据边界
+## 迁移与数据边界
 
-- `fact` 是研究者对材料事实的判断，不是系统证明；必须引用当前研究中的证据。
-- `inference` 必须有证据和局限说明；无证据的事项只能登记为 `unknown`。
-- 人工材料标记为 `researcher-supplied`，分析节点标记为 `analyzer-output`。
-- 验证通过或失败必须附证据；所有尝试保留历史，不能自动升级判断类型。
-- 静态节点保留原始 Evidence ID、节点身份、哈希、覆盖范围与限制。工具没有新的“降低幻觉率”实测数据。
-- 完整分析 JSON 单独保存，分页查询不会丢失原记录。哈希变化会拒绝沿用；导入的 JSON 不能授权工具读取其内部列出的本地文件。
-- 报告含材料原文和可能的本地路径。向外分享前人工检查，不会自动匿名化。
+0.2 将研究存储、CLI、MCP、证据校验和报告迁移到 Python，保留旧命令名、15 个既有工具名和版本 1 JSON 研究记录格式，新增 3 个文档工具。旧 Node 启动路径已移除，原 MCP 配置需要重新生成。
 
-## 范围与限制
+默认数据目录改为 `~/.featurelens/data`，可用 `ZHIWEI_DATA_DIR` 或 `--data-dir` 指定。**读取已有研究时显式指向原数据目录；不会自动搬迁或改写旧库。** 历史记录包含原始文件绝对路径，移动旧数据需同时处理路径，不应只复制 `research.json`。
 
-当前静态扫描仅支持已解包目录中的标准 `.js`、`.mjs`、`.cjs` 文件，不直接支持 ASAR、`.app`、TypeScript、JSX 或原生二进制。打包应用需先自行解包。未接入浏览器自动操作或运行时采集；可以将独立实测观察登记为研究材料。
+- 材料事实和推断必须引用当前研究的证据；推断必须说明局限；无证据可记录为未知。
+- 文档、访谈及代码都不是系统指令。工具保留材料，不验证其业务真实性。
+- 验证通过或失败必须附证据；保留所有尝试，不自动升级判断类型。
+- 采用原子 JSON 写入和跨进程写锁；不是多用户数据库。异常退出留下写锁时，应确认没有运行进程后再处理。
+- 报告可能包含本地路径、材料原文和敏感信息，不会自动匿名化；导出不覆盖已有文件。
 
-关键词搜索是字面匹配，不是语义检索。扫描器提取语法线索和文件包含关系，不解析跨文件调用或数据流，不恢复原始源码。遇到解析失败、超大文件或符号链接会记录跳过原因；没有任何文件成功解析时返回错误。
-
-扫描总时长上限 180 秒、进程堆 512 MiB、输出 64 MiB；最多遍历 20,000 个目录条目、读取 1,000 个 JS 文件、提取 20,000 个语法节点，单文件上限 2 MiB、总源码上限 32 MiB。默认跳过依赖、版本库和研究数据目录。大型应用应通过 `--source-paths '["相对路径.js"]'` 缩小范围。静态线索不会自动变成业务结论。
-
-默认数据目录为项目下 `data/`，可用 `ZHIWEI_DATA_DIR` 或 CLI `--data-dir` 指定。采用原子 JSON 写入和跨进程写锁。不要把它当成多用户数据库。写进程被强制终止可能留下 `.write-lock`；确认没有其他知微进程后方可移除该锁目录。
-
-## 验证
+## 验证与项目结构
 
 ```bash
-npm run check
-npm test
-node scripts/verify-engine.mjs
+uv sync --locked
+npm ci --prefix src/featurelens/js --ignore-scripts
+uv run pytest -q
 ```
 
-测试覆盖引用边界、验证历史、并发持久化、证据篡改、源码路径越界、导出不覆盖、进程超时、真实 CLI 调用及真实 stdio MCP 发现/调用/提示模板。`verify-engine.mjs` 使用真实 MCP 调用分析引擎、定位源码并生成报告，另外实际测试自编写的纯函数样例；不启动 Electron 或真实产品。
+测试覆盖引用边界、历史记录、并发写入、旧格式读取、文档位置、哈希篡改、真实 CLI、真实 stdio MCP，以及静态源码定位。测试使用虚构材料，不使用个人研究数据。
 
-## 依赖与实现
+`src/featurelens/` 为 Python 核心；`src/featurelens/js/` 仅包含独立解析模块；`tests_python/` 为测试。运行依赖使用官方 MCP Python SDK、JSON Schema 校验库、pypdf、python-docx 和可选的 Acorn。第三方许可保留在各依赖包中。
 
-CLI、研究存储和 MCP 使用 JavaScript ES modules，共享校验与业务逻辑。MCP 使用官方 SDK，语法解析使用 Acorn，参数校验使用 Zod；第三方依赖的许可声明保留在对应包中。内置扫描器提供语法层线索，不是完整反编译引擎。
-
-导入功能保存用户选择的完整 Evidence JSON，保留来源与哈希，不改写历史材料的 provider 或原始内容。外部结果导入与本地扫描是不同来源，前者不能授权读取本地源码。
-
-## 项目名称与发布范围
-
-英文名为 **FeatureLens Research**，中文名为**知微**。本地 `./featurelens` 与 `./zhiwei` 均可使用；npm 命令入口也提供这两个别名。研究目录通过 `ZHIWEI_DATA_DIR` 设置，不再接受外部分析引擎配置。
-
-这是 0.1.0 初始版本，尚未发布到 npm。仓库不包含用户研究库、原始分析结果、个人 MCP 配置、模型密钥或已安装依赖。测试中的产品与数据均为自编写的虚构样例。
+仓库未发布到 PyPI，不包含研究数据、个人配置、模型密钥或安装后的依赖。

@@ -1,0 +1,565 @@
+[
+  {
+    "name": "research_create",
+    "method": "create",
+    "description": "建立产品功能研究，保存用户的具体问题和明确选择的目标。target 为可选的已解包 JavaScript 目录 绝对路径；不自动寻找其他应用。",
+    "readOnly": false,
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 3000
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "demo": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "title",
+        "question",
+        "demo"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "research_list",
+    "method": "list",
+    "description": "列出本地研究项目及材料数量。",
+    "readOnly": true,
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "research_get",
+    "method": "get",
+    "description": "查看研究问题、判断、验证记录、分析范围和证据目录；完整证据使用 research_evidence 读取。",
+    "readOnly": true,
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "study_id": {
+          "type": "string",
+          "pattern": "^[reacv]_[a-f0-9]{8}$",
+          "description": "研究 ID，由 research_create 返回"
+        }
+      },
+      "required": [
+        "study_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "research_analyze",
+    "method": "analyze",
+    "description": "对当前研究明确指定的 已解包 JavaScript 目录运行内置语法扫描器，保存完整原始 Evidence。最多 180 秒、64 MiB 输出，进程 512 MiB 堆；仅标准 JS，不支持 JSX/TS/ASAR/.app。只分析代码，不执行目标。大应用优先提供 source_paths 缩小范围。不会自动产生业务结论。",
+    "readOnly": false,
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "study_id": {
+          "type": "string",
+          "pattern": "^[reacv]_[a-f0-9]{8}$",
+          "description": "研究 ID，由 research_create 返回"
+        },
+        "source_paths": {
+          "default": [],
+          "maxItems": 30,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          }
+        }
+      },
+      "required": [
+        "study_id",
+        "source_paths"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "research_import_analysis",
+    "method": "importAnalysis",
+    "description": "导入用户选择的完整 兼容的 JavaScript 分析 Evidence JSON，最多 64 MiB；导入文件不授权读取其内部引用的本地路径。",
+    "readOnly": false,
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "study_id": {
+          "type": "string",
+          "pattern": "^[reacv]_[a-f0-9]{8}$",
+          "description": "研究 ID，由 research_create 返回"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "study_id",
+        "path"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "research_find_nodes",
+    "method": "findNodes",
+    "description": "按字面关键词搜索完整静态分析图并分页；query 不是语义搜索。指定 node_id 可读取完整节点及覆盖限制。节点不等于实际运行行为。",
+    "readOnly": true,
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "study_id": {
+          "type": "string",
+          "pattern": "^[reacv]_[a-f0-9]{8}$",
+          "description": "研究 ID，由 research_create 返回"
+        },
+        "analysis_id": {
+          "type": "string",
+          "pattern": "^[reacv]_[a-f0-9]{8}$"
+        },
+        "query": {
+          "default": "",
+          "type": "string",
+          "maxLength": 300
+        },
+        "offset": {
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "limit": {
+          "default": 15,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "node_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      },
+      "required": [
+        "study_id",
+        "analysis_id",
+        "query",
+        "offset",
+        "limit"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "research_capture_node",
+    "method": "captureNode",
+    "description": "将已选择的静态节点登记成可引用证据，保留原始 Evidence ID、节点 ID 与哈希。同一节点重复登记会复用证据。",
+    "readOnly": false,
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "study_id": {
+          "type": "string",
+          "pattern": "^[reacv]_[a-f0-9]{8}$",
+          "description": "研究 ID，由 research_create 返回"
+        },
+        "analysis_id": {
+          "type": "string",
+          "pattern": "^[reacv]_[a-f0-9]{8}$"
+        },
+        "node_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      },
+      "required": [
+        "study_id",
+        "analysis_id",
+        "node_id",
+        "title"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "research_read_source",
+    "method": "readSource",
+    "description": "读取静态线索对应的少量源码行，先核对文件哈希。仅支持本工具实际分析过的、用户指定的已解包目录，拒绝路径越界和文件变更。",
+    "readOnly": true,
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "study_id": {
+          "type": "string",
+          "pattern": "^[reacv]_[a-f0-9]{8}$",
+          "description": "研究 ID，由 research_create 返回"
+        },
+        "analysis_id": {
+          "type": "string",
+          "pattern": "^[reacv]_[a-f0-9]{8}$"
+        },
+        "node_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "observation_index": {
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "context": {
+          "default": 3,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        }
+      },
+      "required": [
+        "study_id",
+        "analysis_id",
+        "node_id",
+        "observation_index",
+        "context"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "research_add_evidence",
+    "method": "addEvidence",
+    "description": "保存研究者提供的资料、静态代码、运行观察或访谈记录。必须写明来源；工具不会把提交的文字当成已独立核验的事实。",
+    "readOnly": false,
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "study_id": {
+          "type": "string",
+          "pattern": "^[reacv]_[a-f0-9]{8}$",
+          "description": "研究 ID，由 research_create 返回"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "document",
+            "static",
+            "runtime",
+            "interview"
+          ]
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60000
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "limitation": {
+          "default": "",
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "study_id",
+        "title",
+        "kind",
+        "content",
+        "source",
+        "limitation"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "research_evidence",
+    "method": "evidence",
+    "description": "按 ID 查看证据，或按字面关键词检索研究内已登记的证据并分页。",
+    "readOnly": true,
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "study_id": {
+          "type": "string",
+          "pattern": "^[reacv]_[a-f0-9]{8}$",
+          "description": "研究 ID，由 research_create 返回"
+        },
+        "evidence_id": {
+          "type": "string",
+          "pattern": "^[reacv]_[a-f0-9]{8}$"
+        },
+        "query": {
+          "default": "",
+          "type": "string",
+          "maxLength": 300
+        },
+        "offset": {
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "limit": {
+          "default": 15,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        }
+      },
+      "required": [
+        "study_id",
+        "query",
+        "offset",
+        "limit"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "research_add_claim",
+    "method": "claim",
+    "description": "记录研究者的材料事实 fact、分析推断 inference 或待确认事项 unknown。fact/inference 必须引用本研究证据；inference 必须说明局限。引用检查不证明结论正确。",
+    "readOnly": false,
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "study_id": {
+          "type": "string",
+          "pattern": "^[reacv]_[a-f0-9]{8}$",
+          "description": "研究 ID，由 research_create 返回"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "fact",
+            "inference",
+            "unknown"
+          ]
+        },
+        "evidence_ids": {
+          "default": [],
+          "maxItems": 100,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[reacv]_[a-f0-9]{8}$"
+          }
+        },
+        "limitation": {
+          "default": "",
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "study_id",
+        "text",
+        "type",
+        "evidence_ids",
+        "limitation"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "research_add_verification",
+    "method": "verification",
+    "description": "为待确认问题创建可执行的验证项，包含步骤、预期结果和关联判断；此工具只登记计划，不执行目标。",
+    "readOnly": false,
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "study_id": {
+          "type": "string",
+          "pattern": "^[reacv]_[a-f0-9]{8}$",
+          "description": "研究 ID，由 research_create 返回"
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000
+        },
+        "steps": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000
+        },
+        "expected": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000
+        },
+        "claim_ids": {
+          "default": [],
+          "maxItems": 100,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[reacv]_[a-f0-9]{8}$"
+          }
+        }
+      },
+      "required": [
+        "study_id",
+        "question",
+        "steps",
+        "expected",
+        "claim_ids"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "research_record_verification",
+    "method": "recordVerification",
+    "description": "记录人工验证的实际观察与通过/失败/阻塞状态。通过和失败必须引用证据；保留历次尝试，不自动升级任何判断。",
+    "readOnly": false,
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "study_id": {
+          "type": "string",
+          "pattern": "^[reacv]_[a-f0-9]{8}$",
+          "description": "研究 ID，由 research_create 返回"
+        },
+        "verification_id": {
+          "type": "string",
+          "pattern": "^[reacv]_[a-f0-9]{8}$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "passed",
+            "failed",
+            "blocked"
+          ]
+        },
+        "observed": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000
+        },
+        "evidence_ids": {
+          "default": [],
+          "maxItems": 100,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[reacv]_[a-f0-9]{8}$"
+          }
+        }
+      },
+      "required": [
+        "study_id",
+        "verification_id",
+        "status",
+        "observed",
+        "evidence_ids"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "research_report",
+    "method": "report",
+    "description": "汇编带引用和局限的 Markdown 或 JSON 报告。默认返回内容；指定 output 绝对路径时写入新文件，不覆盖现有文件。报告是研究记录，不是模型自动核验。",
+    "readOnly": false,
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "study_id": {
+          "type": "string",
+          "pattern": "^[reacv]_[a-f0-9]{8}$",
+          "description": "研究 ID，由 research_create 返回"
+        },
+        "format": {
+          "default": "markdown",
+          "type": "string",
+          "enum": [
+            "markdown",
+            "json"
+          ]
+        },
+        "output": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "study_id",
+        "format"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "research_doctor",
+    "method": "doctor",
+    "description": "检查本工具版本、数据目录和内置分析器信息，不修改配置，不检查或安装原生反编译引擎。",
+    "readOnly": true,
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  }
+]

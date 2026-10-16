@@ -1,14 +1,9 @@
 {
   "mcpServers": {
     "featurelens": {
-      "command": "node",
-      "args": [
-        "/absolute/path/featurelens-research/bin/zhiwei.mjs",
-        "mcp"
-      ],
-      "env": {
-        "ZHIWEI_DATA_DIR": "/absolute/path/research-data"
-      }
+      "command": "/absolute/path/featurelens-research/.venv/bin/python",
+      "args": ["-m", "featurelens", "mcp"],
+      "env": {"ZHIWEI_DATA_DIR": "/absolute/path/research-data"}
     }
   }
 }

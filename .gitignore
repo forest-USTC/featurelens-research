@@ -10,3 +10,12 @@ artifacts/
 .DS_Store
 *.log
 coverage/
+
+# Python build and environments
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+dist/
+build/

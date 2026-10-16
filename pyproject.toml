@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "featurelens-research"
+version = "0.2.0"
+description = "Evidence-driven product research: Python CLI and MCP"
+requires-python = ">=3.11"
+dependencies = ["mcp>=2.3,<3", "jsonschema>=4.26,<5", "pypdf>=6,<7", "python-docx>=1.2,<2"]
+
+[project.scripts]
+featurelens = "featurelens.cli:main"
+zhiwei = "featurelens.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8,<10"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/featurelens"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests_python"]
+
+[tool.hatch.build]
+exclude = ["**/node_modules", "**/__pycache__", "**/*.pyc"]
