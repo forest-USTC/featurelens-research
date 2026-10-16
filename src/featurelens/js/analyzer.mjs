@@ -3,6 +3,7 @@ import { readdir, readFile, lstat, realpath } from 'node:fs/promises';
 import { resolve, relative, isAbsolute, sep, extname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { parse } from 'acorn';
+import { fileURLToPath } from 'node:url';
 
 const hash = data => createHash('sha256').update(data).digest('hex');
 const within = (root, file) => { const r = relative(root, file); return r !== '..' && !r.startsWith(`..${sep}`) && !isAbsolute(r); };
@@ -84,7 +85,7 @@ export async function analyzeDirectory(target, selected = []) {
   return { evidence_id: `ev_${hash(JSON.stringify(normalized_result)).slice(0, 24)}`, operation: 'analyze_javascript_application', subject: { local_path: root }, provider: 'featurelens-acorn', normalized_result, limitations };
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === new URL(import.meta.url).pathname) {
+if (process.argv[1] && await realpath(process.argv[1]).catch(() => '') === fileURLToPath(import.meta.url)) {
   try { console.log(JSON.stringify(await analyzeDirectory(process.argv[2], JSON.parse(process.argv[3] || '[]')))); }
   catch (error) { console.error(error.message); process.exitCode = 1; }
 }

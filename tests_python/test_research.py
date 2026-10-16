@@ -185,3 +185,17 @@ def test_parser_failures_and_source_traversal(setup):
     forged = svc.retain(s["id"], raw, encode(raw), "local-run")
     with pytest.raises(ValueError, match="超出选定"):
         svc.readSource(s["id"], forged["id"], node["node_id"])
+
+
+def test_analyzer_entrypoint_accepts_symlink_and_spaces(tmp_path):
+    import featurelens
+    from featurelens.core import run_process
+
+    parser = Path(featurelens.__file__).parent / "js/analyzer.mjs"
+    alias = tmp_path / "parser alias.mjs"
+    alias.symlink_to(parser)
+    target = tmp_path / "target app"
+    target.mkdir()
+    (target / "sample.js").write_text("export function sample() { return 1; }")
+    doc, _ = run_process(["node", str(alias), str(target), "[]"])
+    assert doc["normalized_result"]["statistics"]["parsed_javascript_files"] == 1

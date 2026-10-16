@@ -4,9 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "featurelens-research"
-version = "0.3.0"
+version = "0.4.0"
 description = "Evidence-driven product research: Python CLI and MCP"
 requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = ["mcp>=2.3,<3", "jsonschema>=4.26,<5", "pypdf>=6,<7", "python-docx>=1.2,<2"]
 
 [project.scripts]

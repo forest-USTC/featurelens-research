@@ -1,7 +1,9 @@
 """Research storage and evidence boundaries. Never executes a target application."""
 
+from . import __version__
 import copy
 from contextvars import ContextVar
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -112,7 +114,8 @@ class Store:
     def get(self, sid):
         return self.pick(self.read(), sid)
 
-    def change(self, fn):
+    @contextmanager
+    def locked(self):
         self.init()
         lock = self.directory / ".write-lock"
         for _ in range(80):
@@ -122,21 +125,27 @@ class Store:
             except FileExistsError:
                 time.sleep(0.05)
         else:
-            raise ValueError("研究库正在写入；请确认没有运行进程后检查 .write-lock")
-        temp = self.directory / f"research.{uuid.uuid4().hex}.tmp"
+            raise ValueError("研究库正在写入；确认没有运行进程后检查 .write-lock")
         try:
-            db = self.read()
-            result = fn(db)
-            with open(temp, "xb") as f:
-                os.chmod(temp, 0o600)
-                f.write(encode(db))
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(temp, self.directory / "research.json")
-            return copy.deepcopy(result)
+            yield
         finally:
-            temp.unlink(missing_ok=True)
             lock.rmdir()
+
+    def change(self, fn):
+        with self.locked():
+            temp = self.directory / f"research.{uuid.uuid4().hex}.tmp"
+            try:
+                db = self.read()
+                result = fn(db)
+                with open(temp, "xb") as f:
+                    os.chmod(temp, 0o600)
+                    f.write(encode(db))
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(temp, self.directory / "research.json")
+                return copy.deepcopy(result)
+            finally:
+                temp.unlink(missing_ok=True)
 
     def mutate(self, sid, fn):
         def update(db):
@@ -175,18 +184,34 @@ class Service:
 
         return self.store.change(add)
 
-    def list(self):
+    def list(self, status="active"):
+        db = self.store.read()
+        rows = db["studies"] + (
+            db.get("trash", []) if status in ("all", "deleted") else []
+        )
+
+        def state(s):
+            return (
+                "deleted"
+                if s.get("deleted_at")
+                else "archived"
+                if s.get("archived_at")
+                else "active"
+            )
+
         return [
             dict(
                 id=s["id"],
                 title=s["title"],
                 question=s["question"],
                 demo=s["demo"],
+                status=state(s),
                 evidence_count=len(s["evidence"]),
                 claim_count=len(s["claims"]),
                 updated_at=s["updated_at"],
             )
-            for s in self.store.read()["studies"]
+            for s in rows
+            if status == "all" or state(s) == status
         ]
 
     def get(self, study_id):
@@ -490,7 +515,7 @@ class Service:
 
         return dict(
             name="FeatureLens Research",
-            version="0.3.0",
+            version=__version__,
             python=sys.version.split()[0],
             data_directory=str(self.store.directory),
             engine=dict(
@@ -526,6 +551,12 @@ def find_node(nodes, nid):
 
 
 def markdown(s):
+    labels = {
+        "pending": "待执行",
+        "passed": "研究者记录通过",
+        "failed": "研究者记录失败",
+        "blocked": "受阻",
+    }
     lines = [
         f"# {s['title']}",
         "",
@@ -542,34 +573,81 @@ def markdown(s):
         ("unknown", "待确认"),
     ]:
         lines += [f"## {title}", ""]
-        for c in s["claims"]:
-            if c["type"] == kind:
-                lines += [
-                    f"- {c['id']}：{c['text']}\n  证据：{', '.join(c['evidence_ids']) or '无'}\n  局限：{c['limitation']}"
-                ]
-    lines += ["", "## 验证记录", ""]
+        items = [c for c in s["claims"] if c["type"] == kind]
+        if not items:
+            lines += ["尚无记录。", ""]
+        for c in items:
+            lines += [
+                f"### {c['id']}",
+                "",
+                c["text"],
+                "",
+                f"依据：{', '.join(c['evidence_ids']) or '尚无证据'}",
+                "",
+                f"局限：{c['limitation'] or '需进一步核实'}",
+                "",
+            ]
+    lines += ["## 验证记录", ""]
+    if not s["verifications"]:
+        lines += ["尚无验证计划。", ""]
     for v in s["verifications"]:
         lines += [
-            f"### {v['id']} · {v['question']}",
-            f"步骤：{v['steps']}\n预期：{v['expected']}\n状态：{v['status']}\n关联判断：{', '.join(v['claim_ids'])}",
-            json.dumps(v["attempts"], ensure_ascii=False, indent=2),
+            f"### {v['question']}",
+            "",
+            f"状态：{labels[v['status']]}",
+            "",
+            f"步骤：{v['steps']}",
+            "",
+            f"预期：{v['expected']}",
+            "",
+            f"关联判断：{', '.join(v['claim_ids']) or '无'}",
+            "",
         ]
-    lines += ["", "## 证据目录", ""]
+        for attempt in v["attempts"]:
+            lines += [
+                f"- {attempt['recorded_at']} · {labels[attempt['status']]}：{attempt['observed']}（依据：{', '.join(attempt['evidence_ids']) or '无'}）"
+            ]
+        if not v["attempts"]:
+            lines += ["尚未执行，未记录通过或失败。"]
+        lines += [""]
+    lines += ["## 证据目录", ""]
+    if not s["evidence"]:
+        lines += ["尚无证据。", ""]
     for e in s["evidence"]:
         lines += [
             f"### {e['id']} · {e['title']}",
-            f"来源：{e['source']}\n来源方式：{e['provenance']}\nSHA-256：{e['digest']}",
+            "",
+            f"来源：{e['source']}",
+            "",
+            f"来源方式：{e['provenance']}",
+            "",
             "\n".join("> " + x for x in e["content"].split("\n")),
+            "",
+            f"内容 SHA-256：`{e['digest']}`",
+            "",
             f"局限：{e['limitation']}",
             "",
         ]
-    lines += [
-        "## 分析范围与局限",
-        "",
-        json.dumps(s["analyses"], ensure_ascii=False, indent=2),
-        "",
-        "## 导入文档",
-        "",
-        json.dumps(s.get("documents", []), ensure_ascii=False, indent=2),
-    ]
+    lines += ["## 分析范围与局限", ""]
+    if not s["analyses"]:
+        lines += ["本研究未执行或导入代码静态分析。", ""]
+    for a in s["analyses"]:
+        lines += [
+            f"- {a['id']}：来源 {a['origin']}；{a['node_count']} 个文件/应用节点，{a['semantic_node_count']} 个语法节点。",
+            f"  原始结果 SHA-256：`{a['sha256']}`",
+            f"  局限：{'；'.join(a['limitations'])}",
+            "",
+        ]
+    lines += ["## 导入文档", ""]
+    if not s.get("documents"):
+        lines += ["未导入文档。", ""]
+    for d in s.get("documents", []):
+        lines += [
+            f"- {d['title']}（{d['id']}）：{d['chunk_count']} 个片段。",
+            f"  来源：{d['source']}",
+            f"  文件 SHA-256：`{d['sha256']}`",
+            f"  提取限制：{d['limitation']}",
+        ]
+        lines += ["  " + w for w in d["warnings"]]
+        lines += [""]
     return "\n".join(lines) + "\n"

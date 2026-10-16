@@ -2,7 +2,8 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from .core import Service
+from .core import Service, require
+from . import __version__
 from .tools import DEFINITIONS, invoke
 
 
@@ -19,18 +20,18 @@ def run():
     command = argv.pop(0) if argv else "help"
     if command in ("help", "--help", "-h"):
         print(
-            "FeatureLens Research 0.3 · Python CLI / MCP\n用法：featurelens <命令> [--参数 值] [--json]\n"
+            f"FeatureLens Research {__version__} · Python CLI / MCP\n用法：featurelens <命令> [--参数 值] [--json]\n"
             + "\n".join(
                 d["name"].removeprefix("research_").replace("_", "-")
                 + "  "
                 + d["description"]
                 for d in DEFINITIONS
             )
-            + "\n其他：mcp、mcp-config、tools、demo\n通用：--data-dir /绝对路径/研究库；--input /参数.json\n默认 ~/.featurelens/data；可通过 FEATURELENS_DATA_DIR 或 --data-dir 指定。"
+            + "\n其他：mcp、mcp-config、tools、demo、demo-document\n通用：--data-dir /绝对路径/研究库；--input /参数.json\n默认 ~/.featurelens/data；可通过 FEATURELENS_DATA_DIR 或 --data-dir 指定。"
         )
         return
     if command in ("version", "--version"):
-        print("0.3.0")
+        print(__version__)
         return
     options = {}
     while argv:
@@ -68,6 +69,14 @@ def run():
         }
     elif command == "tools":
         result = DEFINITIONS
+    elif command == "demo-document":
+        from .example import document_demo
+
+        require(
+            set(options) <= {"output"},
+            "demo-document 仅支持 --output、--data-dir、--json",
+        )
+        result = document_demo(service, **options)
     elif command == "demo":
         target = Path(__file__).parent / "demo"
         s = service.create(

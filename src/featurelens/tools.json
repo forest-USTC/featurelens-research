@@ -39,12 +39,23 @@
   {
     "name": "research_list",
     "method": "list",
-    "description": "列出本地研究项目及材料数量。",
+    "description": "列出研究，默认仅活动项；status 支持 active、archived、deleted、all。",
     "readOnly": true,
     "schema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
-      "properties": {},
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "archived",
+            "deleted",
+            "all"
+          ],
+          "default": "active"
+        }
+      },
       "additionalProperties": false
     }
   },

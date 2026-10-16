@@ -2,7 +2,7 @@ import copy
 import json
 from pathlib import Path
 from jsonschema import Draft202012Validator
-from . import documents
+from . import documents, management
 from .core import require
 
 DEFINITIONS = json.loads((Path(__file__).parent / "tools.json").read_text())
@@ -62,6 +62,32 @@ new(
     ["study_id", "document_id", "chunk_id", "title"],
 )
 
+new(
+    "update",
+    "修改研究标题或问题并保留修订历史，不改写已有证据和判断。",
+    dict(study_id=sid, title=field(200), question=field(3000)),
+    ["study_id"],
+)
+for name, description in [
+    ("archive", "归档研究，从默认列表隐藏；保留材料，可取消归档。"),
+    ("unarchive", "取消归档，让研究重新出现在默认列表。"),
+    ("delete", "将明确选择的研究移入回收区；保留原始证据，可通过 undelete 恢复。"),
+    ("undelete", "从回收区恢复研究及原归档状态。"),
+]:
+    new(name, description, dict(study_id=sid), ["study_id"])
+new(
+    "backup",
+    "将整个研究库与引用的原始材料打包为 ZIP，包含归档和回收区；不覆盖已有文件。",
+    dict(output=field()),
+    ["output"],
+)
+new(
+    "restore",
+    "校验 ZIP 备份并恢复到尚不存在的新目录；不覆盖当前库，不授权读取历史应用路径。",
+    dict(path=field(), destination=field()),
+    ["path", "destination"],
+)
+
 
 def invoke(service, name, args):
     d = next((d for d in DEFINITIONS if d["name"] == name), None)
@@ -79,4 +105,6 @@ def invoke(service, name, args):
     Draft202012Validator(d["schema"]).validate(args)
     if d["method"] in ("import_document", "document_chunks", "capture_document_chunk"):
         return getattr(documents, d["method"])(service, **args)
+    if hasattr(management, d["method"]):
+        return getattr(management, d["method"])(service, **args)
     return getattr(service, d["method"])(**args)

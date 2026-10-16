@@ -14,7 +14,11 @@ def test_real_stdio_research_document_flow(tmp_path):
             async with ClientSession(*streams) as client:
                 await client.initialize()
                 tools = await client.list_tools()
-                assert len(tools.tools) == 18
+                assert len(tools.tools) == 25
+                destructive = next(
+                    t for t in tools.tools if t.name == "research_delete"
+                )
+                assert destructive.annotations.destructive_hint is True
                 prompts = await client.list_prompts()
                 assert prompts.prompts[0].name == "feature-investigation"
                 prompt = await client.get_prompt(
@@ -93,5 +97,21 @@ def test_real_stdio_research_document_flow(tmp_path):
                 )
                 report = await call("research_report", {"study_id": s["id"]})
                 assert "没有证据时返回未知" in report["text"]
+                await call(
+                    "research_update", {"study_id": s["id"], "title": "更新后的研究"}
+                )
+                await call("research_archive", {"study_id": s["id"]})
+                rows = await call("research_list", {"status": "archived"})
+                assert rows["items"][0]["title"] == "更新后的研究"
+                await call("research_delete", {"study_id": s["id"]})
+                await call("research_undelete", {"study_id": s["id"]})
+                await call("research_unarchive", {"study_id": s["id"]})
+                backup = tmp_path / "mcp-backup.zip"
+                await call("research_backup", {"output": str(backup)})
+                restored = await call(
+                    "research_restore",
+                    {"path": str(backup), "destination": str(tmp_path / "restored")},
+                )
+                assert restored["studies"] == 1
 
     asyncio.run(run())
