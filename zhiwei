@@ -1,7 +1,0 @@
-#!/bin/sh
-tool_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-if [ -x "$tool_dir/.venv/bin/python" ]; then
-  exec "$tool_dir/.venv/bin/python" -m featurelens "$@"
-fi
-printf '%s\n' '请先在项目目录运行 uv sync；或安装 Python 包后使用 featurelens 命令。' >&2
-exit 1

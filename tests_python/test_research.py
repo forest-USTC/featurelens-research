@@ -64,9 +64,9 @@ def test_concurrent_store_instances(setup):
     assert len(svc.get(s["id"])["claims"]) == 12
 
 
-def test_existing_json_and_strict_schema(setup):
+def test_read_preserves_data_and_strict_schema(setup):
     svc, s, p = setup
-    # A v0.1 record has no documents field; opening it must preserve all data.
+    # Read-only operations must not rewrite research records.
     before = (p / "data/research.json").read_bytes()
     assert Service(p / "data").get(s["id"]) == s
     assert (p / "data/research.json").read_bytes() == before

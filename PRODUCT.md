@@ -4,4 +4,4 @@
 文档处理支持 TXT、MD、DOCX、文字型 PDF，保留原始文件、哈希和来源位置；不做 OCR。
 JavaScript 仅用于独立的静态解析模块，不执行研究目标。
 模型由宿主客户端提供；工具不调用模型 API。RAG、知识图谱和模型评测属于后续方向，尚未实现。
-旧研究 JSON 格式保持兼容；默认目录 ~/.featurelens/data，可显式选择旧目录。演示均为虚构材料。
+研究记录以 JSON 存储；统一使用 featurelens 命令和 FEATURELENS_DATA_DIR 配置，默认目录 ~/.featurelens/data。演示均为虚构材料。

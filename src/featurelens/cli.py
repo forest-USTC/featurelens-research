@@ -19,18 +19,18 @@ def run():
     command = argv.pop(0) if argv else "help"
     if command in ("help", "--help", "-h"):
         print(
-            "FeatureLens Research 0.2 · Python CLI / MCP\n用法：featurelens <命令> [--参数 值] [--json]\n"
+            "FeatureLens Research 0.3 · Python CLI / MCP\n用法：featurelens <命令> [--参数 值] [--json]\n"
             + "\n".join(
                 d["name"].removeprefix("research_").replace("_", "-")
                 + "  "
                 + d["description"]
                 for d in DEFINITIONS
             )
-            + "\n其他：mcp、mcp-config、tools、demo\n通用：--data-dir /绝对路径/研究库；--input /参数.json\n旧 JSON 数据可通过 --data-dir 指定；默认 ~/.featurelens/data。"
+            + "\n其他：mcp、mcp-config、tools、demo\n通用：--data-dir /绝对路径/研究库；--input /参数.json\n默认 ~/.featurelens/data；可通过 FEATURELENS_DATA_DIR 或 --data-dir 指定。"
         )
         return
     if command in ("version", "--version"):
-        print("0.2.0")
+        print("0.3.0")
         return
     options = {}
     while argv:
@@ -62,7 +62,7 @@ def run():
                 "featurelens": {
                     "command": sys.executable,
                     "args": ["-m", "featurelens", "mcp"],
-                    "env": {"ZHIWEI_DATA_DIR": str(service.store.directory)},
+                    "env": {"FEATURELENS_DATA_DIR": str(service.store.directory)},
                 }
             }
         }

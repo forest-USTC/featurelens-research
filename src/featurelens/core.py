@@ -89,7 +89,7 @@ class Store:
     def __init__(self, directory=None):
         self.directory = Path(
             directory
-            or os.getenv("ZHIWEI_DATA_DIR")
+            or os.getenv("FEATURELENS_DATA_DIR")
             or Path.home() / ".featurelens" / "data"
         ).resolve()
 
@@ -490,7 +490,7 @@ class Service:
 
         return dict(
             name="FeatureLens Research",
-            version="0.2.0",
+            version="0.3.0",
             python=sys.version.split()[0],
             data_directory=str(self.store.directory),
             engine=dict(

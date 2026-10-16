@@ -3,7 +3,7 @@
     "featurelens": {
       "command": "/absolute/path/featurelens-research/.venv/bin/python",
       "args": ["-m", "featurelens", "mcp"],
-      "env": {"ZHIWEI_DATA_DIR": "/absolute/path/research-data"}
+      "env": {"FEATURELENS_DATA_DIR": "/absolute/path/research-data"}
     }
   }
 }

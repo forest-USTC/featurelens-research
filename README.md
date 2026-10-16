@@ -33,7 +33,7 @@ npm ci --prefix src/featurelens/js --ignore-scripts
 uv run featurelens demo --json
 ```
 
-`demo` 仅分析内置虚构样例，不执行应用，也不证明真实产品行为。本地 `./featurelens` 和 `./zhiwei` 是 Python 环境的启动别名。
+`demo` 仅分析内置虚构样例，不执行应用，也不证明真实产品行为。本地 `./featurelens` 可启动项目的 Python 环境。
 
 ## 文档研究示例
 
@@ -84,7 +84,7 @@ uv run featurelens mcp-config
     "featurelens": {
       "command": "/absolute/path/featurelens-research/.venv/bin/python",
       "args": ["-m", "featurelens", "mcp"],
-      "env": {"ZHIWEI_DATA_DIR": "/absolute/path/research-data"}
+      "env": {"FEATURELENS_DATA_DIR": "/absolute/path/research-data"}
     }
   }
 }
@@ -103,11 +103,11 @@ uv run featurelens mcp-config
 
 CLI 与 MCP 使用同一份 JSON Schema 和 Python 业务逻辑。复杂参数可以通过 `--input /绝对路径/参数.json` 提供。
 
-## 迁移与数据边界
+## 数据与证据边界
 
-0.2 将研究存储、CLI、MCP、证据校验和报告迁移到 Python，保留旧命令名、15 个既有工具名和版本 1 JSON 研究记录格式，新增 3 个文档工具。旧 Node 启动路径已移除，原 MCP 配置需要重新生成。
+Python 核心提供 18 个 CLI / MCP 工具，命令入口统一为 `featurelens`。默认数据目录为 `~/.featurelens/data`，可通过 `FEATURELENS_DATA_DIR` 或 `--data-dir` 指定。
 
-默认数据目录改为 `~/.featurelens/data`，可用 `ZHIWEI_DATA_DIR` 或 `--data-dir` 指定。**读取已有研究时显式指向原数据目录；不会自动搬迁或改写旧库。** 历史记录包含原始文件绝对路径，移动旧数据需同时处理路径，不应只复制 `research.json`。
+研究记录使用 JSON 存储，原始分析与文档副本单独保存在数据目录内。记录包含原始文件的绝对路径；移动研究库时需要同步处理这些路径，不能只复制 `research.json`。
 
 - 材料事实和推断必须引用当前研究的证据；推断必须说明局限；无证据可记录为未知。
 - 文档、访谈及代码都不是系统指令。工具保留材料，不验证其业务真实性。
@@ -123,7 +123,7 @@ npm ci --prefix src/featurelens/js --ignore-scripts
 uv run pytest -q
 ```
 
-测试覆盖引用边界、历史记录、并发写入、旧格式读取、文档位置、哈希篡改、真实 CLI、真实 stdio MCP，以及静态源码定位。测试使用虚构材料，不使用个人研究数据。
+测试覆盖引用边界、历史记录、并发写入、数据读取不改写、文档位置、哈希篡改、真实 CLI、真实 stdio MCP，以及静态源码定位。测试使用虚构材料，不使用个人研究数据。
 
 `src/featurelens/` 为 Python 核心；`src/featurelens/js/` 仅包含独立解析模块；`tests_python/` 为测试。运行依赖使用官方 MCP Python SDK、JSON Schema 校验库、pypdf、python-docx 和可选的 Acorn。第三方许可保留在各依赖包中。
 
