@@ -1,0 +1,40 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, writeFile, rm, symlink } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { analyzeDirectory } from '../lib/analyzer.mjs';
+import { ResearchService, ResearchStore, ROOT } from '../lib/core.mjs';
+
+test('builtin analyzer locates hashed source and does not execute target code', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'featurelens-analysis-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await writeFile(join(dir, 'sample.js'), 'throw new Error("must never run");\nexport function answer(q) { if (!q) return null; return q; }');
+  const service = new ResearchService({ store: new ResearchStore(join(dir, 'data')) });
+  const s = await service.create({ title: 'test', question: 'branch?', target: dir });
+  const a = await service.analyze({ study_id: s.id });
+  assert.equal(a.provider, 'featurelens-acorn');
+  const nodes = await service.findNodes({ study_id: s.id, analysis_id: a.id, query: 'answer' });
+  const fn = nodes.items.find(n => n.kind === 'function');
+  assert.ok(fn);
+  const source = await service.readSource({ study_id: s.id, analysis_id: a.id, node_id: fn.node_id });
+  assert.match(source.text, /if \(!q\)/);
+  assert.match(source.sha256, /^[a-f0-9]{64}$/);
+});
+test('scanner discloses parse failures and rejects unsupported or escaped targets', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'featurelens-bounds-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await writeFile(join(dir, 'bad.js'), 'export ???');
+  await assert.rejects(analyzeDirectory(dir), /没有成功解析/);
+  await writeFile(join(dir, 'good.js'), 'const f = () => 42;');
+  const a = await analyzeDirectory(dir);
+  assert.equal(a.normalized_result.statistics.parsed_javascript_files, 1);
+  assert.match(a.normalized_result.statistics.skipped[0].reason, /parse-error/);
+  await assert.rejects(analyzeDirectory(dir, ['../outside.js']), /相对路径/);
+  await symlink(join(ROOT, 'lib/core.mjs'), join(dir, 'escape.js'));
+  await assert.rejects(analyzeDirectory(dir, ['escape.js']), /超出选定/);
+  await writeFile(join(dir, 'typed.ts'), 'const a: number = 1;');
+  await assert.rejects(analyzeDirectory(dir, ['typed.ts']), /不是支持/);
+  await writeFile(join(dir, 'packed.asar'), 'archive');
+  await assert.rejects(analyzeDirectory(join(dir, 'packed.asar')), /只支持已解包/);
+});

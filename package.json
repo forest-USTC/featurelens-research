@@ -11,13 +11,14 @@
   "scripts": {
     "start": "node bin/zhiwei.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check bin/zhiwei.mjs && node --check lib/core.mjs && node --check lib/tools.mjs && node --check lib/mcp.mjs"
+    "check": "node --check bin/zhiwei.mjs && node --check lib/core.mjs && node --check lib/tools.mjs && node --check lib/mcp.mjs && node --check lib/analyzer.mjs"
   },
   "engines": {
     "node": ">=22"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.3.1",
+    "acorn": "8.19.0",
     "zod": "4.4.3"
   },
   "devDependencies": {

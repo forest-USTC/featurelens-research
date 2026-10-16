@@ -7,8 +7,7 @@
         "mcp"
       ],
       "env": {
-        "ZHIWEI_DATA_DIR": "/absolute/path/research-data",
-        "ZHIWEI_ENGINE_BIN": "/absolute/path/chaichai"
+        "ZHIWEI_DATA_DIR": "/absolute/path/research-data"
       }
     }
   }

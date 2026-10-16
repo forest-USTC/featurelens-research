@@ -1,7 +1,4 @@
 #!/bin/sh
-# Reuse the installed analysis runtime; never download a runtime here.
+# Use a standard Node.js installation from PATH.
 tool_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-if [ -x "$HOME/.chaichai/node/bin/node" ]; then
-  exec "$HOME/.chaichai/node/bin/node" "$tool_dir/bin/zhiwei.mjs" "$@"
-fi
 exec node "$tool_dir/bin/zhiwei.mjs" "$@"

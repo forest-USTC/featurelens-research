@@ -24,7 +24,7 @@ const help = `FeatureLens Research（知微）0.1 · 产品功能研究 CLI / MC
   add-verification 创建验证：--study-id ID --question 问题 --steps 步骤 --expected 预期
   record-verification 记录验证：--study-id ID --verification-id ID --status passed|failed|blocked --observed 观察 --evidence-ids '["e_ID"]'
   report          导出研究：--study-id ID [--format markdown|json] [--output /新文件.md]
-  doctor          查看 分析引擎 CLI 状态
+  doctor          查看内置分析器状态
   demo            创建并分析内置虚构样例，供体验和验证
   mcp             启动 stdio MCP 服务
   mcp-config      输出 MCP 配置示例（不修改客户端）
@@ -32,7 +32,7 @@ const help = `FeatureLens Research（知微）0.1 · 产品功能研究 CLI / MC
 
 通用：--input /参数.json 从文件读取参数；--data-dir /目录 切换研究库。
 使用 --json 输出结构化结果。没有 HTTP 服务、前端或内置模型 API。
-环境变量：ZHIWEI_DATA_DIR、ZHIWEI_ENGINE_BIN（分析引擎启动器绝对路径）。`;
+环境变量：ZHIWEI_DATA_DIR（研究数据目录）。`;
 
 function parse(args) {
   const values = {}; const switches = new Set(['json', 'demo']);
@@ -57,7 +57,7 @@ try {
   if (command === 'mcp') { await (await import('../lib/mcp.mjs')).serve(service); }
   else {
     let result;
-    if (command === 'mcp-config') result = { mcpServers: { zhiwei: { command: process.execPath, args: [join(ROOT, 'bin/zhiwei.mjs'), 'mcp'], env: { ZHIWEI_DATA_DIR: store.directory, ZHIWEI_ENGINE_BIN: service.engine } } } };
+    if (command === 'mcp-config') result = { mcpServers: { zhiwei: { command: process.execPath, args: [join(ROOT, 'bin/zhiwei.mjs'), 'mcp'], env: { ZHIWEI_DATA_DIR: store.directory } } } };
     else if (command === 'tools') result = toolDefinitions.map(d => ({ name: d.name, description: d.description, parameters: Object.keys(d.shape) }));
     else if (command === 'demo') {
       const s = await service.create({ title: '演示：知识库无引用时如何处理', question: '在这个虚构样例中，没有资料达到阈值时，问答功能返回什么？', target: join(ROOT, 'fixtures/demo-app'), demo: true });
